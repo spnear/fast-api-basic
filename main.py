@@ -28,7 +28,8 @@ class Location(BaseModel):
     state: str
     country: str
 
-class Person(BaseModel):
+class PersonBase(BaseModel):
+
     first_name: str = Field(
         ...,
         min_length=1,
@@ -48,6 +49,29 @@ class Person(BaseModel):
     is_married: Optional[bool] = Field(default=None)
 
 
+    class Config:
+        schema_extra = {
+            "example" : {
+                "first_name": "Juan Sebastian",
+                "last_name": "Pastrana",
+                "age": 21,
+                "hair_color": "black",
+                "is_married": False,
+                "password": "contrasenia_segura"
+
+            }
+        }
+
+class Person(PersonBase):
+    password: str = Field(
+        ...,
+        min_length=8
+    )
+
+
+class PersonOut(PersonBase): 
+    pass
+
 @app.get("/")
 async def root():
     return {"message":"Hola mundo"}
@@ -55,8 +79,8 @@ async def root():
 
 #Request and Response Body
 
-@app.post("/person/new")
-async def create_person(person: Person = Body(...)):
+@app.post('/person/new', response_model=PersonOut)
+def create_person(person: Person = Body(...)):
     return person
 
 #Validar Query Parameters
@@ -67,12 +91,14 @@ async def show_person(
         min_length=1,
         max_length=50,
         title="Person name",
-        description="This is person name, it's between 1 and 50 characters"
+        description="This is person name, it's between 1 and 50 characters",
+        example="Alejandra"
         ),
     age: Optional[str] = Query(
         ...,
         title="Person age",
-        description="This is the person age. It's required"
+        description="This is the person age. It's required",
+        example=25
         )
 ):
     return {name: age}
@@ -82,7 +108,11 @@ async def show_person(
 
 @app.get("/person/detail{person_id}")
 async def show_person(
-    person_id: int = Path(..., gt=0)
+    person_id: int = Path(
+        ...,
+        gt=0,
+        example=123
+        )
 ):
     return {person_id: "It exists!"}
 
@@ -94,7 +124,8 @@ async def update_person(
         ...,
         title="Person ID",
         description="this is person ID",
-        gt=0
+        gt=0,
+        example=123
     ),
     person: Person = Body(...),
     location: Location = Body(...)
