@@ -13,6 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 #FastAPI
 from fastapi import Body, Cookie, FastAPI, File, Form, Header, Path, Query, UploadFile, status
+from fastapi import HTTPException
 
 app = FastAPI()
 
@@ -89,15 +90,28 @@ async def root():
 @app.post(
     '/person/new',
     response_model=PersonOut,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
+    tags=["Persons"]
     )
 def create_person(person: Person = Body(...)):
+    """
+    Create Person
+    
+    This path Operation creates a person in the app and save the information in the database.
+
+    Parameters:
+    - Request body parameter:
+        - **person: Person** -> A person model with first name, last name, age, hair color and marital status
+    
+    Returns a person model with first name, last name, age, hair color and marital status
+    """
     return person
 
 #Validar Query Parameters
 @app.get(
     "/person/detail",
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    tags=["Persons"]
     )
 async def show_person(
     name: Optional[str] = Query(
@@ -106,7 +120,8 @@ async def show_person(
         max_length=50,
         title="Person name",
         description="This is person name, it's between 1 and 50 characters",
-        example="Alejandra"
+        example="Alejandra",
+        deprecated=True
         ),
     age: Optional[str] = Query(
         ...,
@@ -119,8 +134,9 @@ async def show_person(
 
 
 #Validar Path parameters
+persons = [1, 2, 3, 4, 5]
 
-@app.get("/person/detail{person_id}")
+@app.get("/person/detail{person_id}",tags=["Persons"])
 async def show_person(
     person_id: int = Path(
         ...,
@@ -128,11 +144,16 @@ async def show_person(
         example=123
         )
 ):
+    if person_id not in persons:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This person doesn't exist!"
+        )
     return {person_id: "It exists!"}
 
 
 #Validar Request body:
-@app.put("/person/{person_id}")
+@app.put("/person/{person_id}",tags=["Persons"])
 async def update_person(
     person_id: int = Path(
         ...,
@@ -178,15 +199,30 @@ async def contact(
 ):
     return user_agent
 
+
 @app.post(
-    path="/post-image"
+    path='/post-image',
+    status_code=status.HTTP_200_OK,
+    tags=['Upload'], 
+    summary='Upload image',
 )
 async def post_image(
     image: UploadFile = File(...)
-):
-    return {
-        "Filename": image.filename,
-        "Format": image.content_type,
-        "Size(Kb)": round(len(image.file.read())/1024, ndigits=2)
+): 
+    """
+    #Upload Image
 
-    }
+    Args:
+        image -> Image to upload
+
+    Returns:
+        Type of the image and it´s weight
+    """
+    return {
+    #getting the name of the file
+    'filename': image.filename,
+    #show the type of image
+    'format': image.content_type,
+    #convert bytes to kb
+    'size(kb)': round(len(image.file.read()) / 1024, 2)
+}
